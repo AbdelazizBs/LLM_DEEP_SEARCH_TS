@@ -1,14 +1,20 @@
 import { Scalar } from "@scalar/hono-api-reference";
+import { desc } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
+import { env, providerStatus } from "./config/env";
+import { checkDatabase, db, initializeDatabase } from "./db/client";
+import { tasks } from "./db/schema";
+
+await initializeDatabase();
 
 const app = new Hono();
 
 app.use(
   "*",
   cors({
-    origin: Bun.env.APP_URL ?? "http://localhost:5173",
+    origin: env.appUrl,
     allowHeaders: ["Content-Type"],
     allowMethods: ["GET", "POST", "OPTIONS"],
   }),
@@ -73,9 +79,11 @@ const openApiDocument = {
   },
 };
 
-app.get("/health", (c) =>
+app.get("/health", async (c) =>
   c.json({
     ok: true,
+    database: await checkDatabase(),
+    providers: providerStatus,
     service: "deep-dive-research-agent",
   }),
 );
@@ -112,11 +120,13 @@ app.get("/tasks/:id/events", (c) => {
   });
 });
 
-app.get("/admin/tasks", (c) => c.json({ tasks: [] }));
+app.get("/admin/tasks", async (c) => {
+  const rows = await db.select().from(tasks).orderBy(desc(tasks.createdAt));
 
-const port = Number(Bun.env.PORT ?? 3000);
+  return c.json({ tasks: rows });
+});
 
 export default {
-  port,
+  port: env.port,
   fetch: app.fetch,
 };

@@ -45,6 +45,9 @@ cp .env.example .env
 Required environment variables for the first working version:
 
 ```bash
+ACTIVE_PROVIDER=openrouter
+PORT=3000
+PGLITE_DATA_DIR=./pgdata
 OPENROUTER_API_KEY=your_openrouter_key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 APP_URL=http://localhost:5173
