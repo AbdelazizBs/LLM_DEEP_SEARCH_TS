@@ -1,13 +1,13 @@
 import { chatRequestSchema } from "@deep-research/shared";
 import { Scalar } from "@scalar/hono-api-reference";
-import { asc, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { env, providerStatus } from "./config/env";
-import { checkDatabase, db, initializeDatabase } from "./db/client";
-import { llmCalls, taskEvents, tasks } from "./db/schema";
+import { checkDatabase, initializeDatabase } from "./db/client";
+import { createTask, getTaskDetail, listTasks } from "./db/repository";
 import { openApiDocument } from "./openapi/document";
+import { ensureTaskRuntime, getTaskRuntime, startResearchTask } from "./scheduler/registry";
 
 await initializeDatabase();
 
@@ -54,10 +54,13 @@ app.post("/chat", async (c) => {
     );
   }
 
+  const task = await createTask(parsed.data.message);
+  startResearchTask(task.id, parsed.data.message);
+
   return c.json({
-    mode: "stub",
-    reply:
-      "Chat is connected to the API. The next phase will replace this acknowledgement with the streaming research task.",
+    mode: "task",
+    taskId: task.id,
+    reply: "",
   });
 });
 
@@ -65,43 +68,61 @@ app.get("/tasks/:id/events", (c) => {
   const taskId = c.req.param("id");
 
   return streamSSE(c, async (stream) => {
-    await stream.writeSSE({
-      event: "status",
-      data: JSON.stringify({
-        taskId,
-        status: "not_implemented",
-      }),
+    const detail = await getTaskDetail(taskId);
+
+    if (detail) {
+      for (const event of detail.events) {
+        await stream.writeSSE({
+          event: event.type,
+          data: JSON.stringify(event.payload),
+        });
+      }
+    }
+
+    const runtime = detail ? ensureTaskRuntime(taskId) : getTaskRuntime(taskId);
+    if (!runtime) return;
+
+    const handler = async (event: { type: string; payload: unknown }) => {
+      await stream.writeSSE({
+        event: event.type,
+        data: JSON.stringify(event.payload),
+      });
+    };
+
+    runtime.emitter.on("event", handler);
+
+    const beat = setInterval(() => {
+      void stream.writeSSE({ event: "ping", data: "" });
+    }, 5_000);
+
+    stream.onAbort(() => {
+      clearInterval(beat);
+      runtime.emitter.off("event", handler);
     });
+
+    await new Promise(() => undefined);
   });
 });
 
 app.get("/admin/tasks", async (c) => {
-  const rows = await db.select().from(tasks).orderBy(desc(tasks.createdAt));
+  const rows = await listTasks();
 
   return c.json({ tasks: rows });
 });
 
 app.get("/admin/tasks/:id", async (c) => {
   const taskId = c.req.param("id");
-  const [task] = await db.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+  const detail = await getTaskDetail(taskId);
 
-  if (!task) {
+  if (!detail) {
     return c.json({ message: "Task not found" }, 404);
   }
 
-  const [events, calls] = await Promise.all([
-    db.select().from(taskEvents).where(eq(taskEvents.taskId, taskId)).orderBy(asc(taskEvents.createdAt)),
-    db.select().from(llmCalls).where(eq(llmCalls.taskId, taskId)).orderBy(asc(llmCalls.createdAt)),
-  ]);
-
-  return c.json({
-    task,
-    events,
-    llmCalls: calls,
-  });
+  return c.json(detail);
 });
 
 export default {
   port: env.port,
+  idleTimeout: env.bunIdleTimeoutSeconds,
   fetch: app.fetch,
 };
