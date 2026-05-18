@@ -8,16 +8,16 @@ import { withUsage } from "./withUsage";
 const fallbackDecomposition = (question: string): Decomposition => ({
   subQuestions: [
     {
-      text: `What are the key facts about ${question}`,
-      focus: "Core answer and main points.",
+      text: `Definition and core concepts of ${question}`,
+      focus: "What it is and how it works.",
     },
     {
-      text: `What are the practical implications of ${question}`,
-      focus: "Real-world context and examples.",
+      text: `Practical applications of ${question}`,
+      focus: "Real-world usage and examples.",
     },
     {
-      text: `What are the limitations or caveats regarding ${question}`,
-      focus: "Uncertainty and boundaries.",
+      text: `Key considerations for ${question}`,
+      focus: "Important context and tradeoffs.",
     },
   ],
 });

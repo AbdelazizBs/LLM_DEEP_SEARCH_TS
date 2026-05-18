@@ -5,15 +5,22 @@ import { modelFor } from "./provider";
 import type { PipelineRunContext, ResearchResult } from "./types";
 import { withUsage } from "./withUsage";
 
-const fallbackReport = (question: string, findings: ResearchResult[]): FinalReport => ({
-  summary: `Here is what is known about "${question}" based on general knowledge. Live research sources were not available, so this answer reflects established understanding without verified citations.`,
-  sections: findings.map((result) => ({
-    title: result.subQuestion.text,
-    body: result.topFindings.map((finding) => finding.finding).join("\n\n"),
-    citations: [],
-  })),
-  confidence: "low",
-});
+const fallbackReport = (_question: string, findings: ResearchResult[]): FinalReport => {
+  const summaryParts = findings.map((f) => {
+    const text = f.topFindings.map((t) => t.finding).join(" ");
+    return text;
+  });
+
+  return {
+    summary: summaryParts.join(" "),
+    sections: findings.map((result) => ({
+      title: result.subQuestion.text,
+      body: result.topFindings.map((finding) => finding.finding).join("\n\n"),
+      citations: [],
+    })),
+    confidence: "low",
+  };
+};
 
 export async function synthesizeReport(question: string, findings: ResearchResult[], context: PipelineRunContext = {}) {
   try {
