@@ -5,6 +5,7 @@ import { LLM_MODELS, type ModelRole } from "../config/models";
 export const openrouter = createOpenRouter({
   apiKey: env.openRouterApiKey,
   baseURL: env.openRouterBaseUrl,
+  compatibility: "strict",
 });
 
 export function modelFor(role: ModelRole) {

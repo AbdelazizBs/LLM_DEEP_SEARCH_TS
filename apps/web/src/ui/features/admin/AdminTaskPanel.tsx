@@ -10,6 +10,9 @@ type TaskRow = {
   updatedAt: string;
   startedAt: string | null;
   completedAt: string | null;
+  totalCost: number;
+  totalTokens: number;
+  callCount: number;
 };
 
 type LlmCallRow = {
@@ -123,8 +126,8 @@ export function AdminTaskPanel() {
                         <StatusBadge status={task.status} />
                       </td>
                       <td className="px-5 py-3 text-muted">{duration}</td>
-                      <td className="px-5 py-3 text-muted">—</td>
-                      <td className="px-5 py-3 text-muted">—</td>
+                      <td className="px-5 py-3 text-muted">${task.totalCost.toFixed(4)}</td>
+                      <td className="px-5 py-3 text-muted">{task.totalTokens.toLocaleString()}</td>
                       <td className="px-5 py-3 text-muted">
                         {task.startedAt ? new Date(task.startedAt).toLocaleTimeString() : "—"}
                       </td>

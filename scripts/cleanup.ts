@@ -12,6 +12,7 @@ const targets = [
   "packages/shared/dist",
   "apps/server/pgdata",
   "apps/server/.pglite",
+  ".data",
   ".turbo",
 ];
 

@@ -47,7 +47,7 @@ Required environment variables for the first working version:
 ```bash
 ACTIVE_PROVIDER=openrouter
 PORT=3000
-PGLITE_DATA_DIR=./pgdata
+PGLITE_DATA_DIR=../../.data/pglite
 OPENROUTER_API_KEY=your_openrouter_key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 APP_URL=http://localhost:5173
@@ -81,6 +81,26 @@ Expected local URLs:
 - API docs: `http://localhost:3000/docs`
 - OpenAPI JSON: `http://localhost:3000/openapi.json`
 - Admin UI: `http://localhost:5173/admin`
+
+## Local Chat Test
+
+Start both processes, then send a message from the web app:
+
+```bash
+bun run dev:server
+```
+
+```bash
+bun run dev:web
+```
+
+The current chat flow creates a background task, runs the research pipeline, writes events to PGlite, and streams progress into the assistant message over SSE. This is the real localhost test path before the final AI SDK `streamText` message-part integration.
+
+## PGlite Troubleshooting
+
+PGlite is an embedded database, so only run one API server against the same `PGLITE_DATA_DIR` at a time. If startup fails with `RuntimeError: Aborted()`, stop all running `bun` server processes, then restart `bun run dev:server`.
+
+If the local database directory is corrupted during development, remove `.data` and start the server again. This deletes local task history only.
 
 ## API Manager
 

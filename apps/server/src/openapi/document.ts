@@ -45,15 +45,17 @@ export const openApiDocument = {
     "/chat": {
       post: {
         tags: ["Chat"],
-        summary: "Start or continue a chat turn",
+        summary: "Start a background research task",
         description:
-          "Planned AI SDK UI message stream endpoint. The scaffold currently returns 501 until the scheduler and pipeline are wired.",
+          "Creates a persisted research task, starts the background pipeline, and returns the task ID for SSE subscription.",
         responses: {
           "200": {
-            description: "AI SDK UI message stream once implemented",
-          },
-          "501": {
-            description: "Chat stream is not implemented yet",
+            description: "Task started",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ChatResponse" },
+              },
+            },
           },
         },
       },
@@ -147,6 +149,15 @@ export const openApiDocument = {
               google: { type: "boolean" },
             },
           },
+        },
+      },
+      ChatResponse: {
+        type: "object",
+        required: ["reply", "mode", "taskId"],
+        properties: {
+          reply: { type: "string" },
+          mode: { type: "string", enum: ["task", "streaming"] },
+          taskId: { type: "string" },
         },
       },
       Task: {

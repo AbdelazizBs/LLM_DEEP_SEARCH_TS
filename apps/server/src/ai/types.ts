@@ -1,6 +1,11 @@
 import type { FinalReport, ScoredFinding, SubQuestion } from "@deep-research/shared";
 import type { LedgerEntry } from "./ledger";
 
+export type PipelineRunContext = {
+  taskId?: string;
+  onUsage?: (entry: LedgerEntry) => void | Promise<void>;
+};
+
 export type PipelineEvent =
   | {
       type: "stage-started";
@@ -24,7 +29,11 @@ export type PipelineEvent =
     }
   | {
       type: "ledger";
-      entries: LedgerEntry[];
+      entry: LedgerEntry;
+    }
+  | {
+      type: "task-error";
+      message: string;
     };
 
 export type PipelineEventHandler = (event: PipelineEvent) => void | Promise<void>;

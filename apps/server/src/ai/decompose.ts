@@ -1,28 +1,30 @@
 import { decompositionSchema, type Decomposition } from "@deep-research/shared";
 import { generateText, Output } from "ai";
+import { env } from "../config/env";
 import { modelFor } from "./provider";
+import type { PipelineRunContext } from "./types";
 import { withUsage } from "./withUsage";
 
 const fallbackDecomposition = (question: string): Decomposition => ({
   subQuestions: [
     {
-      text: `What is the direct answer to: ${question}`,
-      focus: "Core facts and primary tradeoffs.",
+      text: `What are the key facts about ${question}`,
+      focus: "Core answer and main points.",
     },
     {
-      text: `What evidence or examples matter most for: ${question}`,
-      focus: "Supporting details and practical examples.",
+      text: `What are the practical implications of ${question}`,
+      focus: "Real-world context and examples.",
     },
     {
-      text: `What risks, limitations, or counterarguments affect: ${question}`,
-      focus: "Caveats and confidence boundaries.",
+      text: `What are the limitations or caveats regarding ${question}`,
+      focus: "Uncertainty and boundaries.",
     },
   ],
 });
 
-export async function decomposeQuestion(question: string) {
+export async function decomposeQuestion(question: string, context: PipelineRunContext = {}) {
   try {
-    const result = await withUsage({ label: "decompose", role: "decompose" }, () =>
+    const result = await withUsage({ label: "decompose", role: "decompose", ...context }, () =>
       generateText({
         model: modelFor("decompose"),
         output: Output.object({
@@ -33,8 +35,8 @@ export async function decomposeQuestion(question: string) {
         system:
           "You decompose broad research questions into practical sub-questions. Return only schema-valid structured output.",
         prompt: `Break this research question into 3 to 5 focused sub-questions:\n\n${question}`,
-        maxRetries: 3,
-        timeout: 60_000,
+        maxRetries: 1,
+        timeout: env.pipelineCallTimeoutMs,
       }),
     );
 

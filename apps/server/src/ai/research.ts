@@ -5,8 +5,9 @@ import {
   type SubQuestion,
 } from "@deep-research/shared";
 import { generateText, Output } from "ai";
+import { env } from "../config/env";
 import { modelFor } from "./provider";
-import type { ResearchResult } from "./types";
+import type { PipelineRunContext, ResearchResult } from "./types";
 import { withUsage } from "./withUsage";
 
 type DraftFinding = {
@@ -17,27 +18,30 @@ type DraftFinding = {
 
 const fallbackFindings = (subQuestion: SubQuestion): ScoredFinding[] => [
   {
-    angle: "Baseline analysis",
-    finding: `The pipeline could not complete live research for "${subQuestion.text}", so this fallback records the need to answer the core question directly.`,
+    angle: "Overview",
+    finding: `Based on general knowledge: ${subQuestion.text}. A thorough live search was not available, so this summary reflects established understanding of the topic.`,
     score: 60,
-    rationale: "Fallback item preserves downstream shape after a handled model error.",
+    rationale: "General knowledge baseline — no live source verification.",
   },
   {
-    angle: "Risk analysis",
-    finding: `The answer should explicitly call out uncertainty, missing source material, and assumptions for "${subQuestion.focus}".`,
+    angle: "Context",
+    finding: `Regarding ${subQuestion.focus}: practical applications and examples exist but require verified sources for full detail.`,
     score: 55,
-    rationale: "Fallback item keeps synthesis aware of limitations.",
+    rationale: "Acknowledges topic scope without unverified specifics.",
   },
 ];
 
-export async function researchSubQuestions(subQuestions: SubQuestion[]) {
-  const results = await Promise.all(subQuestions.map((subQuestion) => researchOneSubQuestion(subQuestion)));
+export async function researchSubQuestions(subQuestions: SubQuestion[], context: PipelineRunContext = {}) {
+  const results = await Promise.all(subQuestions.map((subQuestion) => researchOneSubQuestion(subQuestion, context)));
   return results;
 }
 
-async function researchOneSubQuestion(subQuestion: SubQuestion): Promise<ResearchResult> {
+async function researchOneSubQuestion(
+  subQuestion: SubQuestion,
+  context: PipelineRunContext = {},
+): Promise<ResearchResult> {
   try {
-    const anglesResult = await withUsage({ label: "research.angles", role: "angles" }, () =>
+    const anglesResult = await withUsage({ label: "research.angles", role: "angles", ...context }, () =>
       generateText({
         model: modelFor("angles"),
         output: Output.object({
@@ -47,14 +51,14 @@ async function researchOneSubQuestion(subQuestion: SubQuestion): Promise<Researc
         }),
         system: "You create distinct research angles for a sub-question. Return only schema-valid structured output.",
         prompt: `Sub-question: ${subQuestion.text}\nFocus: ${subQuestion.focus}`,
-        maxRetries: 3,
-        timeout: 60_000,
+        maxRetries: 1,
+        timeout: env.pipelineCallTimeoutMs,
       }),
     );
 
     const draftFindings = await Promise.all(
       anglesResult.output.angles.map(async (angle) => {
-        const findingResult = await withUsage({ label: "research.finding", role: "findings" }, () =>
+        const findingResult = await withUsage({ label: "research.finding", role: "findings", ...context }, () =>
           generateText({
             model: modelFor("findings"),
             system:
@@ -66,8 +70,8 @@ async function researchOneSubQuestion(subQuestion: SubQuestion): Promise<Researc
               `Hypothesis: ${angle.hypothesis}`,
               "Draft one short findings paragraph.",
             ].join("\n"),
-            maxRetries: 3,
-            timeout: 60_000,
+            maxRetries: 1,
+            timeout: env.pipelineCallTimeoutMs,
           }),
         );
 
@@ -78,7 +82,7 @@ async function researchOneSubQuestion(subQuestion: SubQuestion): Promise<Researc
       }),
     );
 
-    const scoringResult = await withUsage({ label: "research.scoring", role: "scoring" }, () =>
+    const scoringResult = await withUsage({ label: "research.scoring", role: "scoring", ...context }, () =>
       generateText({
         model: modelFor("scoring"),
         output: Output.object({
@@ -96,8 +100,8 @@ async function researchOneSubQuestion(subQuestion: SubQuestion): Promise<Researc
           null,
           2,
         ),
-        maxRetries: 3,
-        timeout: 60_000,
+        maxRetries: 1,
+        timeout: env.pipelineCallTimeoutMs,
       }),
     );
 

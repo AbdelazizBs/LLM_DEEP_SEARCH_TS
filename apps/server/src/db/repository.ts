@@ -64,7 +64,25 @@ export async function createLlmCall(entry: LedgerEntry) {
 }
 
 export async function listTasks() {
-  return db.select().from(tasks).orderBy(desc(tasks.createdAt));
+  const taskRows = await db.select().from(tasks).orderBy(desc(tasks.createdAt));
+
+  const tasksWithStats = await Promise.all(
+    taskRows.map(async (task) => {
+      const calls = await db.select().from(llmCalls).where(eq(llmCalls.taskId, task.id));
+      const totalCost = calls.reduce((sum, c) => sum + c.costUsd, 0);
+      const totalTokens = calls.reduce((sum, c) => sum + c.inputTokens + c.outputTokens + c.reasoningTokens, 0);
+      const callCount = calls.length;
+
+      return {
+        ...task,
+        totalCost,
+        totalTokens,
+        callCount,
+      };
+    }),
+  );
+
+  return tasksWithStats;
 }
 
 export async function getTaskDetail(taskId: string) {

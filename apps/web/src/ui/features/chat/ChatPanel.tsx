@@ -48,10 +48,13 @@ export function ChatPanel() {
     source.addEventListener("stage-completed", (e: MessageEvent) => {
       const data = JSON.parse(e.data) as StreamEvent;
       if (data.stage === "synthesize" && data.report) {
-        const finalText = [
-          data.report.summary,
-          ...(data.report.sections?.map((s) => `${s.title}\n${s.body}`) || []),
-        ].join("\n\n");
+        const parts = [data.report.summary];
+        if (data.report.sections) {
+          for (const section of data.report.sections) {
+            parts.push(`${section.title}\n${section.body}`);
+          }
+        }
+        const finalText = parts.join("\n\n");
 
         setMessages((current) =>
           current.map((m) => (m.id === messageId ? { ...m, text: finalText } : m)),
@@ -126,11 +129,11 @@ export function ChatPanel() {
       <div className="border-b border-border bg-surface-muted px-5 py-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-foreground">Chat test surface</p>
-            <p className="text-xs text-muted">Starts a background research task and streams task events over SSE.</p>
+            <p className="text-sm font-medium text-foreground">Research chat</p>
+            <p className="text-xs text-muted">Ask a question and get a researched answer.</p>
           </div>
           <span className="w-fit rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-medium text-foreground">
-            API connected
+            Connected
           </span>
         </div>
       </div>
@@ -138,8 +141,8 @@ export function ChatPanel() {
       <div className="flex-1 space-y-3 overflow-y-auto p-5">
         {messages.length === 0 ? (
           <div className="grid gap-3 rounded-md border border-dashed border-border bg-surface-muted p-4 text-sm leading-6 text-muted">
-            <p className="font-medium text-foreground">Ready for a smoke test.</p>
-            <p>Send a question to verify the React form, Vite proxy, Hono route, and shared schema validation.</p>
+            <p className="font-medium text-foreground">Ask a research question.</p>
+            <p>The system will research and compose a detailed answer.</p>
           </div>
         ) : (
           messages.map((message) => <ChatBubble key={message.id} message={message} />)
@@ -153,12 +156,12 @@ export function ChatPanel() {
 
 function ChatBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
-  const isAssistantLoading = message.role === "assistant" && message.taskId && !message.text.includes("\n");
+  const isAssistantLoading = message.role === "assistant" && message.taskId && !message.text.includes("\n\n");
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[85%] rounded-lg px-4 py-3 text-sm leading-6 shadow-sm ${
+        className={`max-w-[85%] rounded-lg px-4 py-3 text-sm leading-6 shadow-sm whitespace-pre-wrap ${
           isUser
             ? "bg-primary text-primary-foreground"
             : isAssistantLoading

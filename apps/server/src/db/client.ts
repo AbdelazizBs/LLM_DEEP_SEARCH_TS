@@ -1,9 +1,18 @@
 import { PGlite } from "@electric-sql/pglite";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { drizzle } from "drizzle-orm/pglite";
 import { env } from "../config/env";
 import * as schema from "./schema";
 
-export const pglite = new PGlite(env.pgliteDataDir);
+const pgliteDataDir = resolve(env.pgliteDataDir);
+const pgliteParentDir = dirname(pgliteDataDir);
+
+if (!existsSync(pgliteParentDir)) {
+  mkdirSync(pgliteParentDir, { recursive: true });
+}
+
+export const pglite = new PGlite(pgliteDataDir);
 export const db = drizzle(pglite, { schema });
 
 export async function initializeDatabase() {

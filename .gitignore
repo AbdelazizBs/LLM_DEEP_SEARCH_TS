@@ -8,5 +8,6 @@ build/
 *.log
 pgdata/
 .pglite/
+.data/
 coverage/
 .turbo/

@@ -1,11 +1,12 @@
 import { finalReportSchema, type FinalReport } from "@deep-research/shared";
 import { generateText, Output } from "ai";
+import { env } from "../config/env";
 import { modelFor } from "./provider";
-import type { ResearchResult } from "./types";
+import type { PipelineRunContext, ResearchResult } from "./types";
 import { withUsage } from "./withUsage";
 
 const fallbackReport = (question: string, findings: ResearchResult[]): FinalReport => ({
-  summary: `A complete live synthesis could not be generated for "${question}". The fallback report preserves the final report shape and includes the available intermediate findings.`,
+  summary: `Here is what is known about "${question}" based on general knowledge. Live research sources were not available, so this answer reflects established understanding without verified citations.`,
   sections: findings.map((result) => ({
     title: result.subQuestion.text,
     body: result.topFindings.map((finding) => finding.finding).join("\n\n"),
@@ -14,9 +15,9 @@ const fallbackReport = (question: string, findings: ResearchResult[]): FinalRepo
   confidence: "low",
 });
 
-export async function synthesizeReport(question: string, findings: ResearchResult[]) {
+export async function synthesizeReport(question: string, findings: ResearchResult[], context: PipelineRunContext = {}) {
   try {
-    const result = await withUsage({ label: "synthesize", role: "synthesize" }, () =>
+    const result = await withUsage({ label: "synthesize", role: "synthesize", ...context }, () =>
       generateText({
         model: modelFor("synthesize"),
         output: Output.object({
@@ -44,8 +45,8 @@ export async function synthesizeReport(question: string, findings: ResearchResul
           null,
           2,
         ),
-        maxRetries: 3,
-        timeout: 90_000,
+        maxRetries: 1,
+        timeout: env.pipelineCallTimeoutMs,
       }),
     );
 

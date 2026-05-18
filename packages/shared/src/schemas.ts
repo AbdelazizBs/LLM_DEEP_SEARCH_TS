@@ -10,7 +10,8 @@ export const chatRequestSchema = z.object({
 
 export const chatResponseSchema = z.object({
   reply: z.string().describe("Assistant reply for the current chat turn."),
-  mode: z.enum(["stub", "streaming"]).describe("Whether this response is temporary stub behavior or the final stream."),
+  mode: z.enum(["task", "streaming"]).describe("Whether this response starts a background task or streams directly."),
+  taskId: z.string().optional().describe("Background research task identifier when a task was started."),
 });
 
 export const subQuestionSchema = z.object({

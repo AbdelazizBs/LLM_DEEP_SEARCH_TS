@@ -7,11 +7,11 @@ type UsageResult = {
 };
 
 export async function withUsage<T extends UsageResult>(
-  meta: { taskId?: string; label: string; role: ModelRole },
+  meta: { taskId?: string; label: string; role: ModelRole; onUsage?: (entry: ReturnType<typeof recordUsage>) => void | Promise<void> },
   fn: () => Promise<T>,
 ) {
   const result = await fn();
-  recordUsage(
+  const entry = recordUsage(
     {
       taskId: meta.taskId,
       label: meta.label,
@@ -19,5 +19,6 @@ export async function withUsage<T extends UsageResult>(
     },
     result.usage,
   );
+  await meta.onUsage?.(entry);
   return result;
 }
