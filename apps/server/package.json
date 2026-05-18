@@ -10,9 +10,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.75",
+    "@ai-sdk/groq": "^3.0.39",
     "@deep-research/shared": "workspace:*",
     "@electric-sql/pglite": "^0.3.14",
-    "@openrouter/ai-sdk-provider": "^1.2.0",
+    "@openrouter/ai-sdk-provider": "^2.9.0",
     "@scalar/hono-api-reference": "^0.9.32",
     "ai": "^6.0.0",
     "drizzle-orm": "^0.45.0",

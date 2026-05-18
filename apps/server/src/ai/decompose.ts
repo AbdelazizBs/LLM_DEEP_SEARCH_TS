@@ -41,7 +41,8 @@ export async function decomposeQuestion(question: string, context: PipelineRunCo
     );
 
     return result.output;
-  } catch {
+  } catch (error) {
+    console.error("[decompose] Error:", error);
     return fallbackDecomposition(question);
   }
 }

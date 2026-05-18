@@ -22,6 +22,7 @@ const envSchema = z.object({
   openAiApiKey: z.preprocess(emptyToUndefined, z.string().optional()),
   anthropicApiKey: z.preprocess(emptyToUndefined, z.string().optional()),
   googleGenerativeAiApiKey: z.preprocess(emptyToUndefined, z.string().optional()),
+  groqApiKey: z.preprocess(emptyToUndefined, z.string().optional()),
 });
 
 export const env = envSchema.parse({
