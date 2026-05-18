@@ -1,0 +1,20 @@
+{
+  "name": "deep-dive-research-agent",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run dev:server",
+    "dev:server": "bun run --cwd apps/server dev",
+    "dev:web": "bun run --cwd apps/web dev",
+    "build": "bun run --cwd packages/shared build && bun run --cwd apps/server build && bun run --cwd apps/web build",
+    "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd apps/server typecheck && bun run --cwd apps/web typecheck",
+    "cleanup": "bun run scripts/cleanup.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
