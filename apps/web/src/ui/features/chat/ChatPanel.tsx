@@ -7,6 +7,8 @@ type ChatMessage = {
   role: "user" | "assistant";
   text: string;
   taskId?: string;
+  stage?: string;
+  stageIndex?: number;
 };
 
 type StreamEvent = {
@@ -16,10 +18,12 @@ type StreamEvent = {
   report?: FinalReport;
 };
 
+const stages = ["decompose", "research", "synthesize"] as const;
+
 const stageLabels: Record<string, string> = {
-  decompose: "Thinking...",
-  research: "Searching...",
-  synthesize: "Writing...",
+  decompose: "Analyzing question",
+  research: "Searching the web",
+  synthesize: "Writing response",
 };
 
 export function ChatPanel() {
@@ -39,10 +43,16 @@ export function ChatPanel() {
 
     source.addEventListener("stage-started", (e: MessageEvent) => {
       const data = JSON.parse(e.data) as StreamEvent;
-      const label = data.stage ? stageLabels[data.stage] || "Processing..." : "Processing...";
-      setMessages((current) =>
-        current.map((m) => (m.id === messageId ? { ...m, text: label } : m)),
-      );
+      if (data.stage) {
+        const stageIndex = stages.indexOf(data.stage as (typeof stages)[number]);
+        setMessages((current) =>
+          current.map((m) =>
+            m.id === messageId
+              ? { ...m, stage: data.stage, stageIndex: stageIndex >= 0 ? stageIndex + 1 : 1 }
+              : m,
+          ),
+        );
+      }
     });
 
     source.addEventListener("stage-completed", (e: MessageEvent) => {
@@ -57,7 +67,7 @@ export function ChatPanel() {
         const finalText = parts.join("\n\n");
 
         setMessages((current) =>
-          current.map((m) => (m.id === messageId ? { ...m, text: finalText } : m)),
+          current.map((m) => (m.id === messageId ? { ...m, text: finalText, stage: undefined, stageIndex: undefined } : m)),
         );
         source.close();
         sourcesRef.current.delete(taskId);
@@ -67,7 +77,7 @@ export function ChatPanel() {
     source.addEventListener("task-error", () => {
       setMessages((current) =>
         current.map((m) =>
-          m.id === messageId ? { ...m, text: "Task failed. Try again." } : m,
+          m.id === messageId ? { ...m, text: "Task failed. Try again.", stage: undefined, stageIndex: undefined } : m,
         ),
       );
       source.close();
@@ -82,7 +92,7 @@ export function ChatPanel() {
     setMessages((current) => [
       ...current,
       { id: now, role: "user", text },
-      { id: assistantId, role: "assistant", text: "Thinking..." },
+      { id: assistantId, role: "assistant", text: "", stage: "decompose", stageIndex: 1 },
     ]);
 
     setIsSending(true);
@@ -101,22 +111,17 @@ export function ChatPanel() {
       const data = (await response.json()) as ChatResponse;
 
       if (data.taskId) {
-        setMessages((current) =>
-          current.map((m) =>
-            m.id === assistantId ? { ...m, taskId: data.taskId, text: "Thinking..." } : m,
-          ),
-        );
         subscribeToTask(data.taskId, assistantId);
       } else {
         setMessages((current) =>
-          current.map((m) => (m.id === assistantId ? { ...m, text: data.reply } : m)),
+          current.map((m) => (m.id === assistantId ? { ...m, text: data.reply, stage: undefined, stageIndex: undefined } : m)),
         );
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown chat error";
       setMessages((current) =>
         current.map((m) =>
-          m.id === assistantId ? { ...m, text: `Request failed: ${message}` } : m,
+          m.id === assistantId ? { ...m, text: `Request failed: ${message}`, stage: undefined, stageIndex: undefined } : m,
         ),
       );
     } finally {
@@ -130,7 +135,7 @@ export function ChatPanel() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-foreground">Research chat</p>
-            <p className="text-xs text-muted">Ask a question and get a researched answer.</p>
+            <p className="text-xs text-muted">Ask a question and get a researched answer with web search.</p>
           </div>
           <span className="w-fit rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-medium text-foreground">
             Connected
@@ -142,7 +147,7 @@ export function ChatPanel() {
         {messages.length === 0 ? (
           <div className="grid gap-3 rounded-md border border-dashed border-border bg-surface-muted p-4 text-sm leading-6 text-muted">
             <p className="font-medium text-foreground">Ask a research question.</p>
-            <p>The system will research and compose a detailed answer.</p>
+            <p>The system will search the web and compose a detailed answer.</p>
           </div>
         ) : (
           messages.map((message) => <ChatBubble key={message.id} message={message} />)
@@ -156,7 +161,7 @@ export function ChatPanel() {
 
 function ChatBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
-  const isAssistantLoading = message.role === "assistant" && message.taskId && !message.text.includes("\n\n");
+  const isLoading = message.role === "assistant" && message.stage !== undefined;
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -164,12 +169,32 @@ function ChatBubble({ message }: { message: ChatMessage }) {
         className={`max-w-[85%] rounded-lg px-4 py-3 text-sm leading-6 shadow-sm whitespace-pre-wrap ${
           isUser
             ? "bg-primary text-primary-foreground"
-            : isAssistantLoading
+            : isLoading
               ? "border border-border bg-surface-muted text-muted"
               : "border border-border bg-surface-muted text-foreground"
         }`}
       >
-        {message.text}
+        {isLoading ? (
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1">
+              <span className="h-2 w-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: "0ms" }} />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: "150ms" }} />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-muted" style={{ animationDelay: "300ms" }} />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">
+                {message.stage ? stageLabels[message.stage] || "Processing" : "Processing"}
+              </p>
+              {message.stageIndex && (
+                <p className="text-xs text-muted">
+                  Step {message.stageIndex} of {stages.length}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          message.text
+        )}
       </div>
     </div>
   );

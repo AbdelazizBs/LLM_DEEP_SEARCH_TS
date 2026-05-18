@@ -19,7 +19,8 @@ export function modelFor(role: ModelRole) {
   const modelId = LLM_MODELS[role];
 
   if (modelId.startsWith("groq/")) {
-    return groq(modelId.replace("groq/", ""));
+    const groqModelId = modelId.replace("groq/", "");
+    return groq(groqModelId);
   }
 
   return openrouter.chat(modelId, {

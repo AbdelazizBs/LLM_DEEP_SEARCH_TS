@@ -14,6 +14,7 @@ type DraftFinding = {
   angle: string;
   hypothesis: string;
   finding: string;
+  sources?: Array<{ title: string; url: string }>;
 };
 
 const fallbackFindings = (subQuestion: SubQuestion): ScoredFinding[] => [
@@ -56,31 +57,37 @@ async function researchOneSubQuestion(
       }),
     );
 
-    const draftFindings = await Promise.all(
-      anglesResult.output.angles.map(async (angle) => {
-        const findingResult = await withUsage({ label: "research.finding", role: "findings", ...context }, () =>
-          generateText({
-            model: modelFor("findings"),
-            system:
-              "You write concise research findings. Be specific, practical, and honest about uncertainty. Do not invent URLs.",
-            prompt: [
-              `Sub-question: ${subQuestion.text}`,
-              `Focus: ${subQuestion.focus}`,
-              `Angle: ${angle.angle}`,
-              `Hypothesis: ${angle.hypothesis}`,
-              "Draft one short findings paragraph.",
-            ].join("\n"),
-            maxRetries: 1,
-            timeout: env.pipelineCallTimeoutMs,
-          }),
-        );
+    const draftFindings: DraftFinding[] = [];
 
-        return {
-          ...angle,
-          finding: findingResult.text,
-        } satisfies DraftFinding;
-      }),
-    );
+    for (const angle of anglesResult.output.angles) {
+      const searchQuery = `${subQuestion.text} ${angle.angle} ${angle.hypothesis}`;
+
+      const webResult = await withUsage({ label: "research.websearch", role: "research", ...context }, () =>
+        generateText({
+          model: modelFor("research"),
+          system: `You are researching: ${subQuestion.text}
+Focus: ${subQuestion.focus}
+Angle: ${angle.angle}
+Hypothesis: ${angle.hypothesis}
+
+Search the web for current, accurate information. Provide a concise findings paragraph based on real sources. Include key facts, data points, and practical insights.`,
+          prompt: searchQuery,
+          maxRetries: 1,
+          timeout: env.pipelineCallTimeoutMs,
+        }),
+      );
+
+      const sources = (webResult as any).response?.body?.choices?.[0]?.message?.executed_tools?.[0]?.search_results?.results
+        ?.slice(0, 3)
+        ?.map((r: any) => ({ title: r.title, url: r.url })) ?? [];
+
+      draftFindings.push({
+        angle: angle.angle,
+        hypothesis: angle.hypothesis,
+        finding: webResult.text,
+        sources,
+      });
+    }
 
     const scoringResult = await withUsage({ label: "research.scoring", role: "scoring", ...context }, () =>
       generateText({
@@ -94,7 +101,7 @@ async function researchOneSubQuestion(
         prompt: JSON.stringify(
           {
             subQuestion,
-            findings: draftFindings,
+            findings: draftFindings.map((f) => ({ angle: f.angle, finding: f.finding })),
             instruction: "Pick exactly the top 2 findings and score each from 0 to 100.",
           },
           null,
