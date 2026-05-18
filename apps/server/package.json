@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --env-file=../../.env --hot src/index.ts",
+    "pipeline:dev": "bun --env-file=../../.env src/ai/runPipelineDev.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },

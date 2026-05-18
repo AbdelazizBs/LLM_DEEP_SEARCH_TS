@@ -68,12 +68,23 @@ Run the web app:
 bun run dev:web
 ```
 
+Run the Phase 1 pipeline directly from the server package:
+
+```bash
+bun run --cwd apps/server pipeline:dev "What are the main tradeoffs between SQLite, DuckDB, and Postgres for analytics workloads?"
+```
+
 Expected local URLs:
 
 - Web app: `http://localhost:5173`
 - API: `http://localhost:3000`
 - API docs: `http://localhost:3000/docs`
+- OpenAPI JSON: `http://localhost:3000/openapi.json`
 - Admin UI: `http://localhost:5173/admin`
+
+## API Manager
+
+The project uses Scalar at `/docs` as the API manager/reference UI. It is the best fit for this stack right now because it plugs directly into Hono, reads our OpenAPI document, and gives a Swagger-like testing surface without adding a heavier framework.
 
 ## Development Priorities
 

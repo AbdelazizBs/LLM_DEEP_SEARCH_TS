@@ -4,7 +4,7 @@ type PlaceholderPanelProps = {
 
 export function PlaceholderPanel({ children }: PlaceholderPanelProps) {
   return (
-    <div className="rounded-md border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">
+    <div className="rounded-md border border-dashed border-border bg-surface-muted p-4 text-sm leading-6 text-muted">
       {children}
     </div>
   );

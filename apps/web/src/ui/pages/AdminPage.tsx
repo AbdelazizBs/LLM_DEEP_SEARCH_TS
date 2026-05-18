@@ -3,7 +3,11 @@ import { AdminTaskPanel } from "../features/admin/AdminTaskPanel";
 
 export function AdminPage() {
   return (
-    <PageShell maxWidth="6xl" title="Admin">
+    <PageShell
+      description="Track task status, stage timing, token usage, and cost once the scheduler starts persisting real runs."
+      maxWidth="6xl"
+      title="Admin"
+    >
       <AdminTaskPanel />
     </PageShell>
   );

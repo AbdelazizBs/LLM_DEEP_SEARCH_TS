@@ -4,6 +4,15 @@ export const taskStatusSchema = z
   .enum(["scheduled", "running", "completed", "failed"])
   .describe("Current lifecycle state of the background research task.");
 
+export const chatRequestSchema = z.object({
+  message: z.string().min(1).describe("The user's chat message or research question."),
+});
+
+export const chatResponseSchema = z.object({
+  reply: z.string().describe("Assistant reply for the current chat turn."),
+  mode: z.enum(["stub", "streaming"]).describe("Whether this response is temporary stub behavior or the final stream."),
+});
+
 export const subQuestionSchema = z.object({
   text: z.string().describe("A focused sub-question derived from the user's original research question."),
   focus: z.string().describe("The specific angle or boundary this sub-question should investigate."),
@@ -60,6 +69,8 @@ export const finalReportSchema = z.object({
 });
 
 export type TaskStatus = z.infer<typeof taskStatusSchema>;
+export type ChatRequest = z.infer<typeof chatRequestSchema>;
+export type ChatResponse = z.infer<typeof chatResponseSchema>;
 export type Decomposition = z.infer<typeof decompositionSchema>;
 export type SubQuestion = z.infer<typeof subQuestionSchema>;
 export type ResearchAngles = z.infer<typeof researchAnglesSchema>;
